@@ -14,4 +14,8 @@
 #include <Psapi.h>
 
 
+#include <mshtml.h>
+#include <atlbase.h>
+#include <oleacc.h>
+
 // TODO: reference additional headers your program requires here

@@ -1,9 +1,8 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #include "stdafx.h"
 
-DWORD GetProcessIDByName(wchar_t* ProcessName, DWORD CurrentPID);
+DWORD GetProcessIDByName(wchar_t* ProcessName, DWORD LastPID);
 void InjectProcess(DWORD PID);
-DWORD GetNextLowestProcessIDByName(wchar_t* ProcessName);
 
 BOOL APIENTRY DllMain(HMODULE hModule,
 	DWORD  ul_reason_for_call,
@@ -11,22 +10,21 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	)
 {
 	DWORD resPID;
-	int iCount = 0;
-	//Sleep(100000);
+	DWORD iLastPID = 0;
 
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
 
-		resPID = GetNextLowestProcessIDByName(L"iexplorer.exe");
-		if (resPID > 0)
+		resPID = GetProcessIDByName(L"IEXPLORE.EXE", iLastPID);
+		while (resPID > 0)
 		{
 			InjectProcess(resPID);
 
+			iLastPID = resPID;
+			resPID = GetProcessIDByName(L"IEXPLORE.EXE", iLastPID);
 			//FreeLibraryAndExitThread(hModule, 0);
 		}
-		
-		
 		
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
@@ -38,7 +36,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
 void InjectProcess(DWORD PID)
 {
-	char* buffer = "C:\\Source\\GitHub\\Haa\\x64\\Debug\\HaaDLL.dll";
+	char* buffer = "C:\\Source\\GitHub\\Haa\\Debug\\HaaDLL32.dll";
 
 	/*
 	* Get process handle passing in the process ID.
@@ -115,7 +113,7 @@ DWORD GetProcessIDByName(wchar_t* ProcessName, DWORD CurrentPID)
 	return 0;
 }
 
-DWORD GetNextLowestProcessIDByName(wchar_t* ProcessName)
+DWORD GetNextLowestProcessIDByName(wchar_t* ProcessName, DWORD LastPID)
 {
 	DWORD aProcesses[1024], cbNeeded, cProcesses;
 	unsigned int i;
@@ -135,7 +133,7 @@ DWORD GetNextLowestProcessIDByName(wchar_t* ProcessName)
 
 	for (i = 0; i < cProcesses; i++)
 	{
-		if (aProcesses[i] != 0 && aProcesses[i] < CurrentPID && aProcesses[i] > GetCurrentProcessId())
+		if (aProcesses[i] != 0 && aProcesses[i] < CurrentPID && aProcesses[i] > LastPID)
 		{
 			TCHAR szProcessName[MAX_PATH] = TEXT("<unknown>");
 
