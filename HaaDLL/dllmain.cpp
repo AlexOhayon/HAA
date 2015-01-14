@@ -12,24 +12,22 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 {
 	DWORD resPID;
 	int iCount = 0;
+	//Sleep(100000);
 
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
 
-		resPID = GetNextLowestProcessIDByName(L"notepad.exe");
+		resPID = GetNextLowestProcessIDByName(L"iexplorer.exe");
 		if (resPID > 0)
 		{
 			InjectProcess(resPID);
 
-			FreeLibraryAndExitThread(hModule, 0);
+			//FreeLibraryAndExitThread(hModule, 0);
 		}
-		else
-		{
-			wchar_t Message[100];
-			//swprintf_s(Message, L"Bam! Module has been loaded! PID: %d", GetCurrentProcessId());
-			MessageBox(NULL, (LPCWSTR)&Message, L"Injected!", MB_OK);
-		}
+		
+		
+		
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
 	case DLL_PROCESS_DETACH:
@@ -40,7 +38,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
 void InjectProcess(DWORD PID)
 {
-	char* buffer = "V:\\Projects\\awfrazer.visualstudio.com\\ITC - Fellows\\DLLInjectionDemo\\Debug\\Injection.DLL";
+	char* buffer = "C:\\Source\\GitHub\\Haa\\x64\\Debug\\HaaDLL.dll";
 
 	/*
 	* Get process handle passing in the process ID.
