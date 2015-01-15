@@ -1,8 +1,9 @@
-﻿Build started 1/14/15 17:47:28.
-     1>Project "C:\Source\Github\HAA\HaaDLL\HaaDLL.vcxproj" on node 3 (Build target(s)).
+﻿Build started 1/15/15 14:58:38.
+     1>Project "C:\Source\Github\HAA\HaaDLL\HaaDLL.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /Od /D WIN32 /D _DEBUG /D _WINDOWS /D _USRDLL /D HAADLL_EXPORTS /D _WINDLL /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt dllmain.cpp
          dllmain.cpp
+     1>dllmain.cpp(37): warning C4101: 'resPID' : unreferenced local variable
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Source\Github\HAA\x64\Debug\HaaDLL.dll" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Source\Github\HAA\x64\Debug\HaaDLL.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Source\Github\HAA\x64\Debug\HaaDLL.lib" /MACHINE:X64 /DLL x64\Debug\dllmain.obj
          x64\Debug\HaaDLL.obj
@@ -12,4 +13,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:00.72
+Time Elapsed 00:00:05.61
